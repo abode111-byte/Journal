@@ -201,7 +201,11 @@
       })
       .then(res => {
         console.log('Save response:', res.status);
-        return res.json();
+        if(res.ok) {
+          return res.json();
+        } else {
+          throw new Error('Save failed: ' + res.status);
+        }
       })
       .then(data => {
         console.log('Save success:', data);
@@ -253,7 +257,13 @@
     syncInterval = setInterval(() => {
       if(userId){
         fetch(API_BASE + '/api/entries/' + userId)
-          .then(res => res.json())
+          .then(res => {
+            if(res.ok) {
+              return res.json();
+            } else {
+              throw new Error('Sync failed: ' + res.status);
+            }
+          })
           .then(data => {
             if(JSON.stringify(data) !== JSON.stringify(entries)){
               entries = data || {};

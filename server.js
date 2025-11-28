@@ -41,10 +41,13 @@ setInterval(saveDataToFile, 5000);
 app.get('/api/entries/:userId', (req, res) => {
   try {
     const userId = req.params.userId;
-    res.json(dataStore[userId] || {});
+    console.log('GET /api/entries/' + userId);
+    const data = dataStore[userId] || {};
+    console.log('Returning data:', data);
+    res.json(data);
   } catch (err) {
     console.error('Error reading data:', err);
-    res.json({});
+    res.status(500).json({});
   }
 });
 
@@ -52,8 +55,10 @@ app.get('/api/entries/:userId', (req, res) => {
 app.post('/api/entries/:userId', (req, res) => {
   try {
     const userId = req.params.userId;
+    console.log('POST /api/entries/' + userId, req.body);
     dataStore[userId] = req.body;
     saveDataToFile(); // Save immediately
+    console.log('Data saved successfully');
     res.json({ success: true });
   } catch (err) {
     console.error('Error saving data:', err);
@@ -61,7 +66,7 @@ app.post('/api/entries/:userId', (req, res) => {
   }
 });
 
-// Serve index.html for all other routes
+// Serve index.html for all other routes (must be last)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
