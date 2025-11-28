@@ -151,9 +151,9 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+  <!-- Firebase SDK (Compat version for easier integration) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
 
   <script>
@@ -198,8 +198,8 @@
 
   // Save to Firebase
   function saveStorage(){
-    if(isOnline && userId){
-      db.ref('users/' + userId + '/entries').set(entries).catch(err => {
+    if(isOnline && userId && window.db){
+      window.db.ref('users/' + userId + '/entries').set(entries).catch(err => {
         console.error('Firebase save error:', err);
         // Fallback to localStorage
         localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
@@ -212,8 +212,8 @@
 
   // Load from Firebase or localStorage
   function loadStorage(){
-    if(isOnline && userId){
-      db.ref('users/' + userId + '/entries').on('value', snapshot => {
+    if(isOnline && userId && window.db){
+      window.db.ref('users/' + userId + '/entries').on('value', snapshot => {
         if(snapshot.exists()){
           entries = snapshot.val();
         } else {
@@ -429,16 +429,20 @@
   // -------------------- INIT --------------------
   initUserId();
 
-  // Check Firebase connection
+  // Initialize Firebase and check connection
   try {
-    if(db){
+    if(window.initFirebase && window.initFirebase()){
+      const db = window.db;
       db.ref('.info/connected').on('value', snapshot => {
         isOnline = snapshot.val() === true;
         console.log('Firebase connection:', isOnline ? 'Online' : 'Offline');
       });
+    } else {
+      console.warn('Firebase SDK not loaded. Using localStorage only.');
+      isOnline = false;
     }
   } catch(e) {
-    console.warn('Firebase not configured. Using localStorage only.');
+    console.warn('Firebase error:', e.message, '. Using localStorage only.');
     isOnline = false;
   }
 
