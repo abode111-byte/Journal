@@ -130,6 +130,22 @@
       <!-- Entry panel -->
       <div class="card panel">
         <h3>Entry Details</h3>
+        
+        <!-- Chart selector -->
+        <div style="margin:10px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="color:var(--muted);font-size:13px">Chart:</label>
+          <select id="chartSelect" style="background:var(--card);border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:10px;color:var(--text);cursor:pointer">
+            <option value="EURUSD">EURUSD</option>
+            <option value="GBPUSD">GBPUSD</option>
+            <option value="USDJPY">USDJPY</option>
+            <option value="AUDUSD">AUDUSD</option>
+            <option value="NZDUSD">NZDUSD</option>
+            <option value="USDCAD">USDCAD</option>
+            <option value="USDCHF">USDCHF</option>
+            <option value="CUSTOM">+ Add Custom</option>
+          </select>
+        </div>
+
         <div id="selectedDate" class="muted">No date selected</div>
 
         <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap">
@@ -145,8 +161,13 @@
           <button id="delete" class="small-btn">Delete Entry</button>
         </div>
 
-        <div style="margin-top:14px" class="muted">Saved Entries</div>
-        <div id="entriesList" class="entries" aria-live="polite"></div>
+        <!-- History Tab (Collapsible) -->
+        <div style="margin-top:14px">
+          <button id="historyToggle" class="small-btn" style="width:100%;text-align:left">📋 History (Click to expand)</button>
+          <div id="historyPanel" style="display:none;margin-top:10px;max-height:300px;overflow-y:auto">
+            <div id="entriesList" class="entries" aria-live="polite"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -175,6 +196,7 @@
   let currentYear = now.getFullYear();
   let currentMonth = now.getMonth(); // 0-indexed
   let selectedKey = null; // 'YYYY-MM-DD'
+  let currentChart = 'EURUSD'; // Current trading pair
   let entries = {}; // { 'YYYY-MM-DD': { text:'', status:'win'|'loss' } }
 
   // -------------------- UTIL --------------------
@@ -472,11 +494,46 @@
     renderEntriesList();
   });
 
+  // -------------------- CHART & HISTORY HANDLERS --------------------
+  const chartSelect = document.getElementById('chartSelect');
+  const historyToggle = document.getElementById('historyToggle');
+  const historyPanel = document.getElementById('historyPanel');
+
+  chartSelect.addEventListener('change', (e) => {
+    if(e.target.value === 'CUSTOM'){
+      const customChart = prompt('Enter chart name (e.g., BTCUSD, AAPL):');
+      if(customChart){
+        currentChart = customChart.toUpperCase();
+        // Add to options
+        const option = document.createElement('option');
+        option.value = currentChart;
+        option.text = currentChart;
+        chartSelect.insertBefore(option, chartSelect.lastElementChild);
+        chartSelect.value = currentChart;
+      } else {
+        chartSelect.value = currentChart;
+      }
+    } else {
+      currentChart = e.target.value;
+    }
+    console.log('Switched to chart:', currentChart);
+  });
+
+  historyToggle.addEventListener('click', () => {
+    if(historyPanel.style.display === 'none'){
+      historyPanel.style.display = 'block';
+      historyToggle.textContent = '📋 History (Click to collapse)';
+    } else {
+      historyPanel.style.display = 'none';
+      historyToggle.textContent = '📋 History (Click to expand)';
+    }
+  });
+
   // -------------------- INIT --------------------
   initUserId();
   loadStorage();
   startSync();
-  console.log('Trading Journal loaded. Syncing every 2 seconds.');
+  console.log('Trading Journal loaded. Syncing every 1 second.');
 
   // optional: clicking outside calendar removes outline (keeps selection)
   document.addEventListener('click', (e)=>{
