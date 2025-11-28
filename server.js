@@ -37,6 +37,11 @@ function saveDataToFile() {
 // Save every 5 seconds
 setInterval(saveDataToFile, 5000);
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Get all entries for a user
 app.get('/api/entries/:userId', (req, res) => {
   try {
