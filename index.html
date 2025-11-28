@@ -151,12 +151,25 @@
     </div>
   </div>
 
-  <!-- Firebase SDK (Compat version for easier integration) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="firebase-config.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
+  // -------------------- FIREBASE CONFIG --------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyA_2KfVUdtUh0D8iK7hx6KcN7107dJlwRE",
+    authDomain: "journal-4b15b.firebaseapp.com",
+    projectId: "journal-4b15b",
+    storageBucket: "journal-4b15b.firebasestorage.app",
+    messagingSenderId: "869823757728",
+    appId: "1:869823757728:web:66cb38fffcd2f58b5038c5"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
   // -------------------- STATE --------------------
   const calendarGrid = document.getElementById('calendarGrid');
   const monthLabel = document.getElementById('monthLabel');
@@ -198,8 +211,8 @@
 
   // Save to Firebase
   function saveStorage(){
-    if(isOnline && userId && window.db){
-      window.db.ref('users/' + userId + '/entries').set(entries).catch(err => {
+    if(isOnline && userId){
+      db.ref('users/' + userId + '/entries').set(entries).catch(err => {
         console.error('Firebase save error:', err);
         // Fallback to localStorage
         localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
@@ -212,8 +225,8 @@
 
   // Load from Firebase or localStorage
   function loadStorage(){
-    if(isOnline && userId && window.db){
-      window.db.ref('users/' + userId + '/entries').on('value', snapshot => {
+    if(isOnline && userId){
+      db.ref('users/' + userId + '/entries').on('value', snapshot => {
         if(snapshot.exists()){
           entries = snapshot.val();
         } else {
@@ -429,18 +442,12 @@
   // -------------------- INIT --------------------
   initUserId();
 
-  // Initialize Firebase and check connection
+  // Check Firebase connection
   try {
-    if(window.initFirebase && window.initFirebase()){
-      const db = window.db;
-      db.ref('.info/connected').on('value', snapshot => {
-        isOnline = snapshot.val() === true;
-        console.log('Firebase connection:', isOnline ? 'Online' : 'Offline');
-      });
-    } else {
-      console.warn('Firebase SDK not loaded. Using localStorage only.');
-      isOnline = false;
-    }
+    db.ref('.info/connected').on('value', snapshot => {
+      isOnline = snapshot.val() === true;
+      console.log('Firebase connection:', isOnline ? 'Online' : 'Offline');
+    });
   } catch(e) {
     console.warn('Firebase error:', e.message, '. Using localStorage only.');
     isOnline = false;
