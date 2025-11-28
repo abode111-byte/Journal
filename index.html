@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Trading Journal — Calendar</title>
+  <style>
+    :root{
+      --bg-1:#07101a;
+      --bg-2:#0b1220;
+      --card:#0f1729;
+      --muted:#9aa3ae;
+      --accent:#22c55e; /* green */
+      --danger:#ef4444; /* red */
+      --glass: rgba(255,255,255,0.02);
+      --text:#e6eef6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;
+      background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:18px;
+    }
+    .wrap{max-width:1100px;margin:8px auto;padding:14px}
+
+    header h1{font-size:26px;margin:0}
+    header p{color:var(--muted);margin:6px 0 0;font-size:14px}
+
+    .summary-row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+    .summary-card{
+      background:var(--card);
+      padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);
+      min-width:120px;
+    }
+    .summary-card .label{color:var(--muted);font-size:13px}
+    .summary-card .value{font-weight:800;font-size:18px;margin-top:6px}
+
+    .layout{display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:18px}
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.03);border-radius:12px;padding:14px}
+
+    /* calendar */
+    .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .cal-nav{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
+    .btn:hover{background:rgba(255,255,255,0.02);transform:translateY(-3px)}
+    .month-title{font-weight:700}
+
+    .weekday{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;color:var(--muted);font-size:13px;margin-bottom:8px}
+    .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+
+    .day{
+      background:var(--card);border-radius:10px;padding:10px;min-height:78px;cursor:pointer;
+      border:1px solid rgba(255,255,255,0.02);transition:transform .12s, box-shadow .12s;
+      position:relative;overflow:hidden;
+      display:flex;flex-direction:column;align-items:flex-start;
+    }
+    .day:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+    .day .num{font-weight:700;margin-bottom:8px}
+    .day .note{font-size:12px;color:var(--muted);word-break:break-word;opacity:0.95}
+
+    /* small status square (top-right) */
+    .status-square{
+      position:absolute;right:8px;top:8px;width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,0.25);
+      box-shadow:0 1px 2px rgba(0,0,0,0.4)
+    }
+    .day.win .status-square{background:var(--accent)}
+    .day.loss .status-square{background:var(--danger)}
+
+    /* entry panel */
+    .panel h3{margin:0 0 8px 0}
+    textarea{width:100%;min-height:140px;background:transparent;border:1px solid rgba(255,255,255,0.03);padding:12px;border-radius:10px;color:inherit;resize:vertical}
+    .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .primary{background:linear-gradient(90deg,#17b978,#0ea5a4);border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;color:#02120c}
+    .small-btn{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:10px;color:var(--muted);cursor:pointer}
+    .muted{color:var(--muted);font-size:13px}
+
+    .entries{margin-top:12px;display:grid;gap:10px}
+    .entry-item{background:var(--glass);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .entry-meta{display:flex;justify-content:space-between;align-items:center}
+
+    @media (max-width:980px){
+      .layout{grid-template-columns:1fr;gap:12px}
+      .day{min-height:62px}
+      .wrap{padding:10px;margin:6px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Trading Journal</h1>
+      <p>Tap a date to add/view an entry. Mark Win / Loss — month-wise counters shown above.</p>
+
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="label">Total TP (Wins) — this month</div>
+          <div id="totalTP" class="value">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Total SL (Losses) — this month</div>
+          <div id="totalSL" class="value">0</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Calendar -->
+      <div class="card">
+        <div class="cal-head">
+          <div class="cal-nav">
+            <button id="prev" class="btn" aria-label="Previous month">◀</button>
+            <div class="month-title" id="monthLabel">Month Year</div>
+            <button id="next" class="btn" aria-label="Next month">▶</button>
+          </div>
+          <div class="muted">Today: <span id="todayLabel"></span></div>
+        </div>
+
+        <div class="weekday">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+
+        <div id="calendarGrid" class="grid" aria-live="polite"></div>
+      </div>
+
+      <!-- Entry panel -->
+      <div class="card panel">
+        <h3>Entry Details</h3>
+        <div id="selectedDate" class="muted">No date selected</div>
+
+        <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="markWin" class="small-btn" title="Mark Win" aria-label="Mark Win" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.18);">Win</button>
+          <button id="markLoss" class="small-btn" title="Mark Loss" aria-label="Mark Loss" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.12);">Loss</button>
+          <button id="clearStatus" class="small-btn" title="Clear status" aria-label="Clear status">Clear</button>
+        </div>
+
+        <textarea id="note" placeholder="Write trade notes (setup, plan, result, P/L etc.)"></textarea>
+
+        <div class="actions" style="margin-top:12px">
+          <button id="save" class="primary">Save Entry</button>
+          <button id="delete" class="small-btn">Delete Entry</button>
+        </div>
+
+        <div style="margin-top:14px" class="muted">Saved Entries</div>
+        <div id="entriesList" class="entries" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // -------------------- STATE --------------------
+  const calendarGrid = document.getElementById('calendarGrid');
+  const monthLabel = document.getElementById('monthLabel');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  const todayLabel = document.getElementById('todayLabel');
+
+  const selectedDateEl = document.getElementById('selectedDate');
+  const noteEl = document.getElementById('note');
+  const saveBtn = document.getElementById('save');
+  const deleteBtn = document.getElementById('delete');
+  const markWinBtn = document.getElementById('markWin');
+  const markLossBtn = document.getElementById('markLoss');
+  const clearStatusBtn = document.getElementById('clearStatus');
+  const entriesList = document.getElementById('entriesList');
+
+  let now = new Date();
+  let currentYear = now.getFullYear();
+  let currentMonth = now.getMonth(); // 0-indexed
+  let selectedKey = null; // 'YYYY-MM-DD'
+  let entries = {}; // { 'YYYY-MM-DD': { text:'', status:'win'|'loss' } }
+
+  // -------------------- UTIL --------------------
+  const pad = n => (n < 10 ? '0' + n : '' + n);
+  const keyFor = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`; // m: 1..12
+
+  function saveStorage(){ localStorage.setItem('trading_journal_entries', JSON.stringify(entries)); }
+  function loadStorage(){
+    const raw = localStorage.getItem('trading_journal_entries');
+    if(!raw) return;
+    try{ entries = JSON.parse(raw); } catch(e){ entries = {}; }
+  }
+
+  // -------------------- RENDER CALENDAR --------------------
+  function renderCalendar(){
+    calendarGrid.innerHTML = '';
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    monthLabel.innerText = `${monthNames[currentMonth]} ${currentYear}`;
+    todayLabel.innerText = new Date().toISOString().slice(0,10);
+
+    const firstWeekday = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    // blanks before first day
+    for(let i=0;i<firstWeekday;i++){
+      const blank = document.createElement('div');
+      calendarGrid.appendChild(blank);
+    }
+
+    for(let d=1; d<=daysInMonth; d++){
+      const k = keyFor(currentYear, currentMonth + 1, d);
+      const cell = document.createElement('div');
+      cell.className = 'day';
+
+      // number
+      const num = document.createElement('div'); num.className = 'num'; num.innerText = d; cell.appendChild(num);
+
+      // short note preview
+      if(entries[k] && entries[k].text){
+        const short = entries[k].text.length > 60 ? entries[k].text.slice(0,58) + '…' : entries[k].text;
+        const note = document.createElement('div'); note.className='note'; note.innerText = short;
+        cell.appendChild(note);
+      }
+
+      // status classes + small square
+      if(entries[k] && entries[k].status === 'win') cell.classList.add('win');
+      if(entries[k] && entries[k].status === 'loss') cell.classList.add('loss');
+
+      if(entries[k] && entries[k].status){
+        const sq = document.createElement('div'); sq.className = 'status-square';
+        cell.appendChild(sq);
+      }
+
+      // click handler
+      cell.addEventListener('click', ()=> selectDate(currentYear, currentMonth + 1, d, cell));
+      calendarGrid.appendChild(cell);
+    }
+
+    updateSummary();
+  }
+
+  // -------------------- SELECT DATE --------------------
+  function selectDate(y,m,d,el){
+    // remove outline from all days, then set on this one
+    document.querySelectorAll('.day').forEach(n => n.style.outline = 'none');
+    if(el) el.style.outline = '3px solid rgba(255,255,255,0.04)';
+
+    selectedKey = keyFor(y,m,d);
+    selectedDateEl.innerText = `Selected: ${selectedKey}`;
+    noteEl.value = entries[selectedKey]?.text || '';
+  }
+
+  // -------------------- MONTH-WISE SUMMARY --------------------
+  function updateSummary(){
+    const keys = Object.keys(entries);
+    let tp=0, sl=0;
+    keys.forEach(k => {
+      const [y,m] = k.split('-').map(Number); // YYYY, M, D
+      if(y === currentYear && m === currentMonth + 1){
+        if(entries[k].status === 'win') tp++;
+        if(entries[k].status === 'loss') sl++;
+      }
+    });
+    document.getElementById('totalTP').innerText = tp;
+    document.getElementById('totalSL').innerText = sl;
+  }
+
+  // -------------------- ENTRIES LIST --------------------
+  function renderEntriesList(){
+    entriesList.innerHTML = '';
+    const keys = Object.keys(entries).sort().reverse();
+    if(keys.length === 0){
+      const p = document.createElement('div'); p.className='muted'; p.innerText='No entries yet';
+      entriesList.appendChild(p);
+      return;
+    }
+
+    keys.forEach(k => {
+      const item = document.createElement('div'); item.className = 'entry-item';
+      const meta = document.createElement('div'); meta.className = 'entry-meta';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${k}</strong><div class="muted">${entries[k].status ? entries[k].status.toUpperCase() : 'NONE'}</div>`;
+
+      const right = document.createElement('div');
+      const openBtn = document.createElement('button'); openBtn.className='small-btn'; openBtn.innerText='Open';
+      openBtn.addEventListener('click', ()=>{
+        const [y,m,d] = k.split('-').map(Number);
+        currentYear = y; currentMonth = m - 1;
+        renderCalendar();
+        const el = findDayElement(d);
+        if(el) selectDate(y,m,d,el);
+      });
+
+      const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.style.marginLeft = '8px'; delBtn.innerText='Delete';
+      delBtn.addEventListener('click', ()=>{
+        if(confirm('Delete this entry?')){
+          delete entries[k];
+          saveStorage();
+          renderCalendar();
+          renderEntriesList();
+        }
+      });
+
+      right.appendChild(openBtn); right.appendChild(delBtn);
+      meta.appendChild(left); meta.appendChild(right);
+
+      const content = document.createElement('div'); content.style.marginTop='8px'; content.className='muted'; content.innerText = entries[k].text || '';
+
+      item.appendChild(meta); item.appendChild(content);
+      entriesList.appendChild(item);
+    });
+  }
+
+  function findDayElement(day){
+    const nodes = calendarGrid.querySelectorAll('.day');
+    for(const n of nodes){
+      const num = n.querySelector('.num');
+      if(num && Number(num.innerText) === day) return n;
+    }
+    return null;
+  }
+
+  // -------------------- ACTIONS --------------------
+  saveBtn.addEventListener('click', ()=>{
+    if(!selectedKey) return alert('Select a date first.');
+    const text = noteEl.value.trim();
+    if(!entries[selectedKey]) entries[selectedKey] = {};
+    entries[selectedKey].text = text;
+    saveStorage();
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  deleteBtn.addEventListener('click', ()=>{
+    if(!selectedKey) return alert('Select a date first.');
+    if(entries[selectedKey]) delete entries[selectedKey];
+    saveStorage();
+    noteEl.value = '';
+    selectedKey = null;
+    selectedDateEl.innerText = 'No date selected';
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  markWinBtn.addEventListener('click', ()=>{
+    if(!selectedKey) return alert('Select a date first.');
+    if(!entries[selectedKey]) entries[selectedKey] = {};
+    entries[selectedKey].status = 'win';
+    saveStorage();
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  markLossBtn.addEventListener('click', ()=>{
+    if(!selectedKey) return alert('Select a date first.');
+    if(!entries[selectedKey]) entries[selectedKey] = {};
+    entries[selectedKey].status = 'loss';
+    saveStorage();
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  clearStatusBtn.addEventListener('click', ()=>{
+    if(!selectedKey) return alert('Select a date first.');
+    if(entries[selectedKey]) delete entries[selectedKey].status;
+    saveStorage();
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  prevBtn.addEventListener('click', ()=>{
+    currentMonth--;
+    if(currentMonth < 0){ currentMonth = 11; currentYear--; }
+    selectedKey = null; noteEl.value = ''; selectedDateEl.innerText = 'No date selected';
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  nextBtn.addEventListener('click', ()=>{
+    currentMonth++;
+    if(currentMonth > 11){ currentMonth = 0; currentYear++; }
+    selectedKey = null; noteEl.value = ''; selectedDateEl.innerText = 'No date selected';
+    renderCalendar();
+    renderEntriesList();
+  });
+
+  // -------------------- INIT --------------------
+  loadStorage();
+  renderCalendar();
+  renderEntriesList();
+  updateSummary();
+
+  // optional: clicking outside calendar removes outline (keeps selection)
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.day') && !e.target.closest('.card')) {
+      document.querySelectorAll('.day').forEach(n => n.style.outline = 'none');
+    }
+  });
+  </script>
+</body>
+</html>
