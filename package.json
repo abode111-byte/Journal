@@ -1,0 +1,17 @@
+{
+  "name": "trading-journal",
+  "version": "1.0.0",
+  "description": "Trading Journal with multi-device sync",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["trading", "journal", "calendar"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

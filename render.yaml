@@ -1,9 +1,9 @@
 services:
   - type: web
     name: trading-journal
-    env: static
-    buildCommand: ""
-    staticPublishPath: .
+    env: node
+    buildCommand: "npm install"
+    startCommand: "npm start"
     routes:
       - path: /
         matchType: prefix
