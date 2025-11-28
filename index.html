@@ -227,7 +227,14 @@
           if(raw){
             try{ entries = JSON.parse(raw); } catch(e){ entries = {}; }
           }
+          renderCalendar();
+          renderEntriesList();
+          updateSummary();
         });
+    } else {
+      renderCalendar();
+      renderEntriesList();
+      updateSummary();
     }
   }
 
