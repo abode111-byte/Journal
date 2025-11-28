@@ -197,7 +197,25 @@
   let currentMonth = now.getMonth(); // 0-indexed
   let selectedKey = null; // 'YYYY-MM-DD'
   let currentChart = 'EURUSD'; // Current trading pair
-  let entries = {}; // { 'YYYY-MM-DD': { text:'', status:'win'|'loss' } }
+  let allEntries = {}; // { 'EURUSD': { 'YYYY-MM-DD': { text:'', status:'win'|'loss' } }, ... }
+  
+  // Get entries for current chart
+  function getChartEntries() {
+    if(!allEntries[currentChart]) {
+      allEntries[currentChart] = {};
+    }
+    return allEntries[currentChart];
+  }
+  
+  // Shorthand for current chart entries
+  Object.defineProperty(window, 'entries', {
+    get: function() {
+      return getChartEntries();
+    },
+    set: function(val) {
+      allEntries[currentChart] = val;
+    }
+  });
 
   // -------------------- UTIL --------------------
   const pad = n => (n < 10 ? '0' + n : '' + n);
@@ -215,11 +233,11 @@
   // Save to backend
   function saveStorage(){
     if(userId){
-      console.log('Saving to server:', userId, entries);
+      console.log('Saving to server:', userId, allEntries);
       fetch(API_BASE + '/api/entries/' + userId, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entries)
+        body: JSON.stringify(allEntries)
       })
       .then(res => {
         console.log('Save response:', res.status);
@@ -235,7 +253,7 @@
       .catch(err => {
         console.error('Save error:', err);
         // Fallback to localStorage
-        localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
+        localStorage.setItem('trading_journal_entries', JSON.stringify(allEntries));
       });
     }
   }
@@ -251,7 +269,7 @@
         })
         .then(data => {
           console.log('Loaded data:', data);
-          entries = data || {};
+          allEntries = data || {};
           renderCalendar();
           renderEntriesList();
           updateSummary();
@@ -261,7 +279,7 @@
           // Fallback to localStorage
           const raw = localStorage.getItem('trading_journal_entries');
           if(raw){
-            try{ entries = JSON.parse(raw); } catch(e){ entries = {}; }
+            try{ allEntries = JSON.parse(raw); } catch(e){ allEntries = {}; }
           }
           renderCalendar();
           renderEntriesList();
@@ -287,8 +305,8 @@
             }
           })
           .then(data => {
-            if(JSON.stringify(data) !== JSON.stringify(entries)){
-              entries = data || {};
+            if(JSON.stringify(data) !== JSON.stringify(allEntries)){
+              allEntries = data || {};
               renderCalendar();
               renderEntriesList();
               updateSummary();
@@ -512,11 +530,18 @@
         chartSelect.value = currentChart;
       } else {
         chartSelect.value = currentChart;
+        return;
       }
     } else {
       currentChart = e.target.value;
     }
     console.log('Switched to chart:', currentChart);
+    selectedKey = null;
+    noteEl.value = '';
+    selectedDateEl.innerText = 'No date selected';
+    renderCalendar();
+    renderEntriesList();
+    updateSummary();
   });
 
   historyToggle.addEventListener('click', () => {
