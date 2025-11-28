@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: trading-journal
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
+    routes:
+      - path: /
+        matchType: prefix
