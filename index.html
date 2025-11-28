@@ -238,21 +238,24 @@
     }
   }
 
-  // Sync data every 2 seconds
+  // Sync data every 1 second
   function startSync(){
     syncInterval = setInterval(() => {
-      fetch(API_BASE + '/api/entries/' + userId)
-        .then(res => res.json())
-        .then(data => {
-          if(JSON.stringify(data) !== JSON.stringify(entries)){
-            entries = data || {};
-            renderCalendar();
-            renderEntriesList();
-            updateSummary();
-          }
-        })
-        .catch(err => console.error('Sync error:', err));
-    }, 2000);
+      if(userId){
+        fetch(API_BASE + '/api/entries/' + userId)
+          .then(res => res.json())
+          .then(data => {
+            if(JSON.stringify(data) !== JSON.stringify(entries)){
+              entries = data || {};
+              renderCalendar();
+              renderEntriesList();
+              updateSummary();
+              console.log('Data synced from server');
+            }
+          })
+          .catch(err => console.error('Sync error:', err));
+      }
+    }, 1000);
   }
 
   // -------------------- RENDER CALENDAR --------------------

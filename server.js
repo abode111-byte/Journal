@@ -11,20 +11,37 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Data file path
-const dataFile = path.join(__dirname, 'data.json');
+// Data storage in memory (will be lost on restart, but persists during session)
+let dataStore = {};
 
-// Initialize data file if it doesn't exist
-if (!fs.existsSync(dataFile)) {
-  fs.writeFileSync(dataFile, JSON.stringify({}));
+// Try to load from file on startup
+const dataFile = path.join(__dirname, 'data.json');
+try {
+  if (fs.existsSync(dataFile)) {
+    dataStore = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    console.log('Loaded data from file');
+  }
+} catch (err) {
+  console.error('Error loading data file:', err);
 }
+
+// Save data to file periodically
+function saveDataToFile() {
+  try {
+    fs.writeFileSync(dataFile, JSON.stringify(dataStore, null, 2));
+  } catch (err) {
+    console.error('Error saving data file:', err);
+  }
+}
+
+// Save every 5 seconds
+setInterval(saveDataToFile, 5000);
 
 // Get all entries for a user
 app.get('/api/entries/:userId', (req, res) => {
   try {
-    const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
     const userId = req.params.userId;
-    res.json(data[userId] || {});
+    res.json(dataStore[userId] || {});
   } catch (err) {
     console.error('Error reading data:', err);
     res.json({});
@@ -34,10 +51,9 @@ app.get('/api/entries/:userId', (req, res) => {
 // Save entries for a user
 app.post('/api/entries/:userId', (req, res) => {
   try {
-    const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
     const userId = req.params.userId;
-    data[userId] = req.body;
-    fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+    dataStore[userId] = req.body;
+    saveDataToFile(); // Save immediately
     res.json({ success: true });
   } catch (err) {
     console.error('Error saving data:', err);
