@@ -151,6 +151,11 @@
     </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+  <script src="firebase-config.js"></script>
+
   <script>
   // -------------------- STATE --------------------
   const calendarGrid = document.getElementById('calendarGrid');
@@ -178,11 +183,53 @@
   const pad = n => (n < 10 ? '0' + n : '' + n);
   const keyFor = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`; // m: 1..12
 
-  function saveStorage(){ localStorage.setItem('trading_journal_entries', JSON.stringify(entries)); }
+  let isOnline = false;
+  let userId = null;
+
+  // Generate or retrieve a unique user ID
+  function initUserId(){
+    let id = localStorage.getItem('trading_journal_user_id');
+    if(!id){
+      id = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('trading_journal_user_id', id);
+    }
+    userId = id;
+  }
+
+  // Save to Firebase
+  function saveStorage(){
+    if(isOnline && userId){
+      db.ref('users/' + userId + '/entries').set(entries).catch(err => {
+        console.error('Firebase save error:', err);
+        // Fallback to localStorage
+        localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
+      });
+    } else {
+      // Offline: save to localStorage
+      localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
+    }
+  }
+
+  // Load from Firebase or localStorage
   function loadStorage(){
-    const raw = localStorage.getItem('trading_journal_entries');
-    if(!raw) return;
-    try{ entries = JSON.parse(raw); } catch(e){ entries = {}; }
+    if(isOnline && userId){
+      db.ref('users/' + userId + '/entries').on('value', snapshot => {
+        if(snapshot.exists()){
+          entries = snapshot.val();
+        } else {
+          entries = {};
+        }
+        renderCalendar();
+        renderEntriesList();
+        updateSummary();
+      });
+    } else {
+      // Load from localStorage
+      const raw = localStorage.getItem('trading_journal_entries');
+      if(raw){
+        try{ entries = JSON.parse(raw); } catch(e){ entries = {}; }
+      }
+    }
   }
 
   // -------------------- RENDER CALENDAR --------------------
@@ -380,6 +427,21 @@
   });
 
   // -------------------- INIT --------------------
+  initUserId();
+
+  // Check Firebase connection
+  try {
+    if(db){
+      db.ref('.info/connected').on('value', snapshot => {
+        isOnline = snapshot.val() === true;
+        console.log('Firebase connection:', isOnline ? 'Online' : 'Offline');
+      });
+    }
+  } catch(e) {
+    console.warn('Firebase not configured. Using localStorage only.');
+    isOnline = false;
+  }
+
   loadStorage();
   renderCalendar();
   renderEntriesList();
