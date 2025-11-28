@@ -193,11 +193,20 @@
   // Save to backend
   function saveStorage(){
     if(userId){
+      console.log('Saving to server:', userId, entries);
       fetch(API_BASE + '/api/entries/' + userId, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entries)
-      }).catch(err => {
+      })
+      .then(res => {
+        console.log('Save response:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('Save success:', data);
+      })
+      .catch(err => {
         console.error('Save error:', err);
         // Fallback to localStorage
         localStorage.setItem('trading_journal_entries', JSON.stringify(entries));
@@ -208,9 +217,14 @@
   // Load from backend
   function loadStorage(){
     if(userId){
+      console.log('Loading from server:', userId);
       fetch(API_BASE + '/api/entries/' + userId)
-        .then(res => res.json())
+        .then(res => {
+          console.log('Load response:', res.status);
+          return res.json();
+        })
         .then(data => {
+          console.log('Loaded data:', data);
           entries = data || {};
           renderCalendar();
           renderEntriesList();
