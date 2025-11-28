@@ -186,12 +186,8 @@
 
   // Generate or retrieve a unique user ID
   function initUserId(){
-    let id = localStorage.getItem('trading_journal_user_id');
-    if(!id){
-      id = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('trading_journal_user_id', id);
-    }
-    userId = id;
+    // Use a fixed user ID so all devices sync to the same data
+    userId = 'default_user';
   }
 
   // Save to backend
